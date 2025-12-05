@@ -1,0 +1,7 @@
+{
+  "name": "Copy of LogiVoice - Next Gen Logistics",
+  "description": "A single-page logistics application featuring advanced AI voice agents for real-time customer support using Gemini Live API.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
