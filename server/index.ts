@@ -23,6 +23,7 @@ app.use(cors({
     'http://localhost:5173',
     'https://voiceagent.rajeev-d.workers.dev',
     'https://hospitalvoiceagent.rajeev-d.workers.dev',
+    'https://update-worker-name-to-hospitalvoiceagent-hospitalvoiceagent.rajeev-d.workers.dev',
     'https://hospitalvoiceagent.onrender.com',
   ],
   credentials: true,
