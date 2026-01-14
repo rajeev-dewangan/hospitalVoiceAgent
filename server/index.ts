@@ -64,6 +64,8 @@ const API_BASE_URL = IS_LOCAL
   ? LOCAL_API_BASE_URL
   : `https://api.pipecat.daily.co/v1/public/${AGENT_NAME}`;
 
+// const API_BASE_URL= "https://smart-mutually-grubworm.ngrok-free.app";
+
 // Track in-flight requests to prevent duplicates
 interface InFlightRequest {
   timestamp: number;
@@ -99,7 +101,7 @@ app.post('/api/connect', async (req, res) => {
   try {
     // Get voiceAgentName from query parameter (passed via URL) or request body
     const voiceAgentName = req.query.voiceAgentName as string || req.body.voiceAgentName;
-    
+
     console.log('Received connect request:', {
       query: req.query,
       body: req.body,
@@ -116,7 +118,7 @@ app.post('/api/connect', async (req, res) => {
 
     // Create a unique key for this request (voiceAgentName + query params hash)
     const requestKey = `${voiceAgentName}-${JSON.stringify(req.query)}`;
-    
+
     // Check if there's an in-flight request for this key
     const existingRequest = inFlightRequests.get(requestKey);
     if (existingRequest) {
@@ -138,10 +140,14 @@ app.post('/api/connect', async (req, res) => {
     }
 
     console.log(`Connecting voice agent: ${voiceAgentName}`);
-    
+
     // Extract agent data from query parameters (passed via URL) or request body
     const systemInstruction = (req.query.systemInstruction as string) || req.body.systemInstruction;
     const voiceName = (req.query.voiceName as string) || req.body.voiceName;
+    const phoneNumber = (req.query.phoneNumber as string) || req.body.phoneNumber;
+    // Extract name from query (sent as 'name') and map to userName
+    const userName = (req.query.name as string) || req.body.name || req.body.userName;
+    const orderId = (req.query.orderId as string) || req.body.orderId;
     const requestData = req.body;
     const { voiceAgentName: _, ...otherData } = requestData; // Exclude voiceAgentName from body if present
 
@@ -160,6 +166,9 @@ app.post('/api/connect', async (req, res) => {
       // Include agent data from query params or body
       ...(systemInstruction && { systemInstruction }),
       ...(voiceName && { voiceName }),
+      ...(phoneNumber && { phoneNumber }),
+      ...(userName && { userName }),
+      ...(orderId && { orderId }),
       // Include any additional data from request body
       ...otherData,
     };
@@ -237,7 +246,7 @@ app.post('/api/connect', async (req, res) => {
       keys: Object.keys(data),
       fullResponse: JSON.stringify(data).substring(0, 500), // First 500 chars for debugging
     });
-    
+
     if (!roomUrl || !token) {
       console.error('❌ Missing required fields in Pipecat response:', {
         hasRoomUrl: !!roomUrl,
@@ -252,13 +261,13 @@ app.post('/api/connect', async (req, res) => {
 
     // Set proper headers
     res.setHeader('Content-Type', 'application/json');
-    
+
     // Remove completed request from cache after a short delay
     // (allow other duplicate requests to use the same response)
     setTimeout(() => {
       inFlightRequests.delete(requestKey);
     }, REQUEST_DEDUP_WINDOW_MS);
-    
+
     console.log('Sending response to client');
     return res.status(200).json(responseData);
   } catch (error: any) {
@@ -266,7 +275,7 @@ app.post('/api/connect', async (req, res) => {
     const voiceAgentName = req.query.voiceAgentName as string || req.body.voiceAgentName;
     const requestKey = `${voiceAgentName}-${JSON.stringify(req.query)}`;
     inFlightRequests.delete(requestKey);
-    
+
     console.error('API error:', error);
     return res.status(500).json({
       error: 'Failed to start agent',

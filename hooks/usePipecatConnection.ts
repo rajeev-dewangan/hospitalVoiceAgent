@@ -29,7 +29,7 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
   const [error, setError] = useState<string | null>(null);
   const [assistantText, setAssistantText] = useState<string | null>(null);
   const [assistantWords, setAssistantWords] = useState<Array<{ word: string; id: number }>>([]); // Array of words with IDs for stable keys
-  
+
   const analyzerRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -79,7 +79,7 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
       wordDisplayTimeoutsRef.current = [];
       isNewResponseRef.current = false;
       speechStartTimeRef.current = Date.now();
-      
+
       // Clear transcript clear timeout since new response is starting
       if (transcriptClearTimeoutRef.current) {
         clearTimeout(transcriptClearTimeoutRef.current);
@@ -92,52 +92,52 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
     const processNewLlmWords = (fullText: string) => {
       const words = fullText.split(/\s+/).filter(Boolean);
       const alreadyProcessed = processedWordCountRef.current;
-      
+
       // Find NEW words that haven't been scheduled
       const newWordStrings = words.slice(alreadyProcessed);
       if (newWordStrings.length === 0) {
         console.log('📊 No new words to process');
         return;
       }
-      
+
       console.log('📊 Processing', newWordStrings.length, 'new words (total:', words.length, ', already scheduled:', alreadyProcessed, ')');
-      
+
       const msPerWord = 250;
       const maxWordsFor2Lines = 18;
       const now = Date.now();
       const elapsedSinceSpeechStart = now - speechStartTimeRef.current;
-      
+
       // Add new words to the global list and schedule them
       newWordStrings.forEach((word, idx) => {
         const globalIdx = alreadyProcessed + idx;
         const wordData = { word, id: wordIdCounterRef.current++ };
         wordsWithIdsRef.current.push(wordData);
-        
+
         // Calculate when this word SHOULD appear (absolute timing from speech start)
         const targetTime = globalIdx * msPerWord;
         // Delay = target - elapsed (but at least 0 for words that should already be visible)
         const delay = Math.max(0, targetTime - elapsedSinceSpeechStart);
-        
+
         const capturedGlobalIdx = globalIdx; // Capture for closure
         const timeout = setTimeout(() => {
           const wordsToShow = wordsWithIdsRef.current.slice(0, capturedGlobalIdx + 1);
           const displayWordsWithIds = wordsToShow.slice(-maxWordsFor2Lines);
           const fullTextDisplay = wordsToShow.map(w => w.word).join(' ');
-          
+
           setAssistantText(fullTextDisplay);
           setAssistantWords(displayWordsWithIds);
           lastTranscriptUpdateRef.current = Date.now();
-          
+
           const i = wordDisplayTimeoutsRef.current.indexOf(timeout);
           if (i > -1) wordDisplayTimeoutsRef.current.splice(i, 1);
         }, delay);
-        
+
         wordDisplayTimeoutsRef.current.push(timeout);
       });
-      
+
       // Update the count of processed words
       processedWordCountRef.current = words.length;
-      
+
       // Show first word immediately if this is the first batch
       if (alreadyProcessed === 0 && wordsWithIdsRef.current.length > 0) {
         const firstWord = wordsWithIdsRef.current[0];
@@ -145,7 +145,7 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
         setAssistantWords([firstWord]);
         lastTranscriptUpdateRef.current = Date.now();
       }
-      
+
       console.log('⏰ Scheduled', wordDisplayTimeoutsRef.current.length, 'word display timeouts');
     };
 
@@ -158,7 +158,7 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
       setIsWaitingForResponse(false);
       lastBotAudioActivityRef.current = Date.now();
       lastTranscriptUpdateRef.current = Date.now();
-      
+
       // Always reset for new response at speech start
       resetForNewResponse();
 
@@ -194,7 +194,7 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
 
       // IMPORTANT: Do NOT clear the wordDisplayTimeouts here.
       // Let scheduled timeouts complete so the remaining words are still displayed.
-      
+
       // Calculate how long until all words are displayed, then clear transcript
       // to show "waiting for response..." state
       const totalWords = processedWordCountRef.current;
@@ -202,17 +202,17 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
       const elapsedSinceSpeechStart = Date.now() - speechStartTimeRef.current;
       const totalDisplayTime = totalWords * msPerWord;
       const remainingDisplayTime = Math.max(0, totalDisplayTime - elapsedSinceSpeechStart);
-      
+
       // Wait for all words to display + 2 seconds, then clear transcript
       const delayBeforeClear = remainingDisplayTime + 2000;
-      
+
       console.log(`⏳ Will clear transcript in ${delayBeforeClear}ms (${remainingDisplayTime}ms for words + 2000ms pause)`);
-      
+
       // Clear any existing timeout
       if (transcriptClearTimeoutRef.current) {
         clearTimeout(transcriptClearTimeoutRef.current);
       }
-      
+
       transcriptClearTimeoutRef.current = setTimeout(() => {
         // Only clear if user hasn't started speaking (which would clear it anyway)
         if (!isSpeakingRef.current) {
@@ -275,7 +275,7 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
           wordDisplayTimeoutsRef.current = [];
           speechStartTimeRef.current = Date.now(); // Reset timing
         }
-        
+
         // Process new words from the accumulated LLM text
         // This handles streaming - only new words will be scheduled
         console.log('🔄 Processing new LLM words while speaking');
@@ -286,7 +286,7 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
     const handleBotTtsText = (data: { text: string }) => {
       const ttsText = data.text.trim();
       console.log('📝 Bot TTS text received (word-by-word):', ttsText);
-      
+
       // ONLY process TTS text if:
       // 1. We're in TTS fallback mode (no LLM text available)
       // 2. Agent is currently speaking
@@ -299,18 +299,18 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
           wordsWithIdsRef.current = [];
           wordIdCounterRef.current = 0;
         }
-        
+
         // Split TTS text into words (it might be a phrase or sentence)
         const words = ttsText.split(/\s+/).filter(w => w.length > 0);
-        
+
         words.forEach((word) => {
           const wordData = {
             word,
             id: wordIdCounterRef.current++,
           };
-          
+
           wordsWithIdsRef.current.push(wordData);
-          
+
           // Display immediately in real-time (no delay for TTS fallback)
           const maxWordsFor2Lines = 18;
           const displayWordsWithIds = wordsWithIdsRef.current.slice(-maxWordsFor2Lines);
@@ -348,7 +348,7 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
       // Clear scheduled timeouts for previous response
       wordDisplayTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
       wordDisplayTimeoutsRef.current = [];
-      
+
       // Clear transcript clear timeout
       if (transcriptClearTimeoutRef.current) {
         clearTimeout(transcriptClearTimeoutRef.current);
@@ -423,12 +423,12 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
       try {
         // Get the transport from the client
         const transport = (client as any).transport as DailyTransport;
-        
+
         console.log('🔍 Transport found:', {
           hasTransport: !!transport,
           transportType: transport?.constructor?.name,
         });
-        
+
         if (!transport) {
           console.warn('⚠️ Transport not found on client');
           return;
@@ -436,22 +436,22 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
 
         // Log all available properties on transport
         console.log('📋 Transport properties:', Object.keys(transport));
-        
+
         // Try to access Daily's internal call object
         // DailyTransport may store it as _daily, _dailyCall, or call
-        const dailyCall = (transport as any)._daily || 
-                         (transport as any)._dailyCall || 
-                         (transport as any).call ||
-                         (transport as any)._dailyWrapper?.call;
-        
+        const dailyCall = (transport as any)._daily ||
+          (transport as any)._dailyCall ||
+          (transport as any).call ||
+          (transport as any)._dailyWrapper?.call;
+
         if (!dailyCall) {
           console.warn('⚠️ Daily call object not found. Waiting for connection...');
           // Wait a bit and try again
           await new Promise(resolve => setTimeout(resolve, 1000));
-          const retryDailyCall = (transport as any)._daily || 
-                                (transport as any)._dailyCall || 
-                                (transport as any).call ||
-                                (transport as any)._dailyWrapper?.call;
+          const retryDailyCall = (transport as any)._daily ||
+            (transport as any)._dailyCall ||
+            (transport as any).call ||
+            (transport as any)._dailyWrapper?.call;
           if (!retryDailyCall) {
             console.error('❌ Daily call object still not found after retry');
             return;
@@ -471,7 +471,7 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
             if (typeof (dailyCall as any).participants === 'function') {
               const participants = (dailyCall as any).participants();
               console.log('👥 Participants:', Object.keys(participants));
-              
+
               // Find remote participant (not local)
               for (const [participantId, participant] of Object.entries(participants as any)) {
                 if (participant && (participant as any).local === false) {
@@ -505,7 +505,7 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
 
         // Try to get audio track immediately
         let audioTrack = getRemoteAudioTrack();
-        
+
         // If not found, wait and retry
         let attempts = 0;
         const maxAttempts = 20;
@@ -517,7 +517,7 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
 
         if (!audioTrack) {
           console.warn('⚠️ Remote audio track not found. Setting up listener for participant updates...');
-          
+
           // Set up listener for when remote participant joins
           const handleParticipantUpdated = (event: any) => {
             console.log('📡 Participant updated event:', event);
@@ -544,7 +544,7 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
               console.log('⏹️ Track stopped event:', event);
             });
           }
-          
+
           // Also check periodically for new participants (fallback)
           const checkInterval = setInterval(() => {
             const newTrack = getRemoteAudioTrack();
@@ -554,12 +554,12 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
               setupAudioFromTrack(newTrack);
             }
           }, 1000);
-          
+
           // Clear interval after 30 seconds
           setTimeout(() => {
             clearInterval(checkInterval);
           }, 30000);
-          
+
           // Fallback visualizer while waiting
           setupFallbackVisualizer();
           return;
@@ -580,7 +580,7 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
 
             // Create MediaStream from track
             const mediaStream = new MediaStream([track]);
-            
+
             // IMPORTANT: Create an HTML audio element to play the MediaStream
             // Daily.co may not automatically play audio, so we need to do it explicitly
             const audioElement = document.createElement('audio');
@@ -592,7 +592,7 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
             audioElement.setAttribute('data-pipecat-remote-audio', 'true');
             audioElement.style.display = 'none'; // Hide the element
             document.body.appendChild(audioElement);
-            
+
             // Try to play the audio
             try {
               await audioElement.play();
@@ -613,20 +613,20 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
               document.addEventListener('click', playOnInteraction, { once: true });
               document.addEventListener('touchstart', playOnInteraction, { once: true });
             }
-            
+
             // Monitor audio element
             audioElement.addEventListener('playing', () => {
               console.log('✅ Audio element is playing - visualization should work now');
             });
-            
+
             audioElement.addEventListener('play', () => {
               console.log('▶️ Audio element started playing');
             });
-            
+
             audioElement.addEventListener('pause', () => {
               console.warn('⏸️ Audio element paused - visualization may not work');
             });
-            
+
             // Check if audio is actually playing before starting visualizer
             const checkAudioPlaying = setInterval(() => {
               if (!audioElement.paused && audioElement.readyState >= 2) {
@@ -640,7 +640,7 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
                 });
               }
             }, 500);
-            
+
             // Clear after 10 seconds
             setTimeout(() => clearInterval(checkAudioPlaying), 10000);
             audioElement.addEventListener('pause', () => {
@@ -664,7 +664,7 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
             audioElement.addEventListener('error', (e) => {
               console.error('❌ Audio element error:', e, audioElement.error);
             });
-            
+
             // Log audio element state periodically
             audioStateIntervalRef.current = setInterval(() => {
               console.log('🔊 Audio element state:', {
@@ -681,7 +681,7 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
                 trackReadyState: track.readyState,
               });
             }, 2000);
-            
+
             // Clear interval when track ends
             track.addEventListener('ended', () => {
               if (audioStateIntervalRef.current) {
@@ -689,11 +689,11 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
                 audioStateIntervalRef.current = null;
               }
             });
-            
+
             // Create audio context for visualization
             const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
             audioContextRef.current = new AudioContextClass();
-            
+
             // Resume audio context if suspended (browsers require user interaction)
             if (audioContextRef.current.state === 'suspended') {
               console.log('⏸️ AudioContext is suspended, attempting to resume...');
@@ -704,11 +704,11 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
                 console.warn('⚠️ Could not resume AudioContext:', resumeErr);
               }
             }
-            
+
             // IMPORTANT: Use createMediaStreamSource instead of createMediaElementSource
             // This directly analyzes the MediaStream, which is more reliable
             // The MediaStream can be used by both the audio element (for playback) and the analyzer (for visualization)
-            
+
             // Verify MediaStream has active tracks
             const audioTracks = mediaStream.getAudioTracks();
             console.log('🎵 MediaStream audio tracks:', {
@@ -721,33 +721,33 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
                 label: t.label
               }))
             });
-            
+
             if (audioTracks.length === 0) {
               console.error('❌ No audio tracks in MediaStream!');
               setError('No audio tracks available for visualization');
               return;
             }
-            
+
             const source = audioContextRef.current.createMediaStreamSource(mediaStream);
             const analyzer = audioContextRef.current.createAnalyser();
             analyzer.fftSize = 256;
             analyzer.smoothingTimeConstant = 0.8; // Smooth the visualization
             analyzerRef.current = analyzer;
-            
+
             // Connect: source -> analyzer
             // We don't connect analyzer to destination to avoid double audio playback
             // The audio element already handles playback
             source.connect(analyzer);
-            
+
             console.log('✅ Audio analyzer connected to MediaStream, AudioContext state:', audioContextRef.current.state);
             console.log('📊 Analyzer settings:', {
               fftSize: analyzer.fftSize,
               frequencyBinCount: analyzer.frequencyBinCount,
               smoothingTimeConstant: analyzer.smoothingTimeConstant
             });
-            
+
             console.log('✅ Audio analyzer connected, AudioContext state:', audioContextRef.current.state);
-            
+
             // Monitor track state
             track.addEventListener('ended', () => {
               console.warn('⏹️ Audio track ended');
@@ -758,23 +758,23 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
                 audioStateIntervalRef.current = null;
               }
             });
-            
+
             track.addEventListener('mute', () => {
               console.warn('🔇 Audio track muted');
             });
-            
+
             track.addEventListener('unmute', () => {
               console.log('🔊 Audio track unmuted');
             });
-            
+
             // Store audio element reference for cleanup
             (audioElement as any)._pipecatTrack = track;
-            
+
             // Monitor audio context state
             audioContextRef.current.addEventListener('statechange', () => {
               console.log('🎵 AudioContext state changed:', audioContextRef.current?.state);
             });
-            
+
             // Start visualizer loop
             const dataArray = new Uint8Array(analyzer.frequencyBinCount);
             let frameCount = 0;
@@ -783,15 +783,15 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
                 console.warn('⚠️ Analyzer or AudioContext is null, stopping visualizer');
                 return;
               }
-              
+
               // Check audio context state periodically
               if (audioContextRef.current.state === 'suspended') {
                 audioContextRef.current.resume().catch(console.error);
               }
-              
+
               try {
                 analyzerRef.current.getByteFrequencyData(dataArray);
-                
+
                 let sum = 0;
                 let maxVal = 0;
                 for (let i = 0; i < dataArray.length; i++) {
@@ -799,18 +799,18 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
                   if (dataArray[i] > maxVal) maxVal = dataArray[i];
                 }
                 const avg = sum / dataArray.length;
-                
+
                 // Debug logging (first 10 frames, then every 60 frames ~1 second at 60fps)
                 frameCount++;
                 if (frameCount <= 10 || frameCount % 60 === 0) {
-                  console.log('🎵 Audio visualization data:', { 
-                    avg: avg.toFixed(2), 
-                    max: maxVal, 
+                  console.log('🎵 Audio visualization data:', {
+                    avg: avg.toFixed(2),
+                    max: maxVal,
                     volume: volume.toFixed(2),
-                    contextState: audioContextRef.current.state 
+                    contextState: audioContextRef.current.state
                   });
                 }
-                
+
                 setVolume(avg);
 
                 // Fallback: detect bot speech from audio energy in case events drop
@@ -850,11 +850,11 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
                     }, 1500);
                   }
                 }
-                
+
                 // Note: Volume here is from bot's audio, not user's mic
                 // User speaking detection relies on Pipecat events
                 // Volume is only used for visualizer
-                
+
                 animationFrameRef.current = requestAnimationFrame(update);
               } catch (err) {
                 console.error('❌ Error in visualizer loop:', err);
@@ -875,7 +875,7 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
           const analyzer = audioContextRef.current.createAnalyser();
           analyzer.fftSize = 256;
           analyzerRef.current = analyzer;
-          
+
           const dataArray = new Uint8Array(analyzer.frequencyBinCount);
           const update = () => {
             if (!analyzerRef.current) return;
@@ -988,27 +988,28 @@ export const usePipecatConnection = (): UsePipecatConnectionReturn => {
       try {
         // Use Vite-defined environment variable (from vite.config.ts)
         const apiBaseUrl = (process.env.API_BASE_URL as string) || 'http://localhost:3001';
-        // Pass agent data as query parameters to avoid Pipecat client filtering them
+        // Send data in the required format for Pipecat backend
         const params = new URLSearchParams({
           voiceAgentName: agent.id,
-          systemInstruction: agent.systemInstruction,
           voiceName: agent.voiceName,
+          ...(agent.userName && { name: agent.userName }),
+          ...(agent.phoneNumber && { phoneNumber: agent.phoneNumber }),
         });
         const endpoint = `${apiBaseUrl}/api/connect?${params.toString()}`;
-        
+
         console.log('🔌 Connecting to Pipecat:', {
           endpoint,
           agentId: agent.id,
           agentName: agent.name,
         });
-        
+
         // Pass minimal requestData - agent data is passed via query parameters
         // The server will extract these from query params and include in body sent to Pipecat Cloud
         await client.startBotAndConnect({
           endpoint,
           requestData: {},
         });
-        
+
         console.log('✅ Connection initiated, waiting for transport state...');
       } catch (err: any) {
         console.error('❌ Connection error:', err);

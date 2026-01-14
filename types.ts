@@ -1,7 +1,11 @@
 export enum AgentType {
-  TRACKING = 'TRACKING',
-  SUPPORT = 'SUPPORT',
-  SCHEDULING = 'SCHEDULING'
+  ALLERGY = 'ALLERGY',
+  DERMATOLOGIST = 'DERMATOLOGIST',
+  GENERAL_PHYSICIAN = 'GENERAL_PHYSICIAN',
+  NEUROLOGY = 'NEUROLOGY',
+  UROLOGY = 'UROLOGY',
+  PHYSICAL_THERAPIST = 'PHYSICAL_THERAPIST',
+  CARDIOVASCULAR = 'CARDIOVASCULAR'
 }
 
 export type VoiceAgentName = AgentType;
@@ -14,9 +18,12 @@ export interface AgentProfile {
   avatarUrl: string;
   systemInstruction: string;
   voiceName: string;
+  phoneNumber?: string; // User's phone number from form
+  userName?: string; // User's name from form
 }
 
 export type AudioBlob = {
   data: string;
   mimeType: string;
 };
+
