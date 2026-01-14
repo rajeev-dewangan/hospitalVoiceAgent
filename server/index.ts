@@ -22,6 +22,8 @@ app.use(cors({
     'http://127.0.0.1:3000',
     'http://localhost:5173',
     'https://voiceagent.rajeev-d.workers.dev',
+    'https://hospitalvoiceagent.rajeev-d.workers.dev',
+    'https://hospitalvoiceagent.onrender.com',
   ],
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
